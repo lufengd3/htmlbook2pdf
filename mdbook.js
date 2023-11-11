@@ -1,16 +1,16 @@
 const { chromium, devices } = require('playwright');
 
 const SITE_CONFIG = {
-  bodySelector: '.book-body',
-  chapterLinksElmSelector: '.summary li.chapter>a',
-  bookContentSelector: '#book-search-results',
-  chapterAppendSelector: '.book-body .page-inner',
-  headerSelector: '.book-header',
-  navNextSelector: '.navigation-next',
-  sideBarSelector: '.book-summary',
-  menuContainerSelector: '.book-body .page-inner',
-  menuNextElmSelector: '.book-body #book-search-results',
-}
+  bodySelector: '.page',
+  chapterLinksElmSelector: '#sidebar .chapter-item a:not(.active)',
+  bookContentSelector: '#content',
+  chapterAppendSelector: '#content',
+  headerSelector: '#menu-bar',
+  navNextSelector: '.nav-wrapper',
+  sideBarSelector: '#sidebar',
+  menuContainerSelector: '#content',
+  menuNextElmSelector: '#content main',
+};
 
 class GitBookPDFSpider {
   constructor({browser, page, pageConfig, url, bookName}) {
@@ -159,9 +159,8 @@ class GitBookPDFSpider {
 }
 
 GitBookPDFSpider.create({
-  // url: 'https://braydie.gitbooks.io/how-to-be-a-programmer/content/en/',
   url: 'https://rust-lang.github.io/mdBook/',
-  bookName: '2.pdf',
+  bookName: 'mdBook.pdf',
 }).then(spider => {
   spider.run();
 });
