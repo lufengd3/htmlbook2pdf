@@ -8,7 +8,10 @@ GitBookPDFSpider.create({
   spider.run();
 });
 ```
+
+```bash
 node ./gitbook.js
+```
 
 
 ## Generate PDF on Playwright Playground
