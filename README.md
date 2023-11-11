@@ -15,4 +15,6 @@ node ./gitbook.js
 
 
 ## Generate PDF on Playwright Playground
-https://try.playwright.tech/?e=generate-pdf
+1. Copy gibook.js content
+2. open playwright playground: https://try.playwright.tech/?e=generate-pdf
+3. replace GitBookPDFSpider.create config
