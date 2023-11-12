@@ -159,9 +159,8 @@ class GitBookPDFSpider {
 }
 
 GitBookPDFSpider.create({
-  // url: 'https://braydie.gitbooks.io/how-to-be-a-programmer/content/en/',
-  url: 'https://rust-lang.github.io/mdBook/',
-  bookName: '2.pdf',
+  url: 'https://braydie.gitbooks.io/how-to-be-a-programmer/content/en/',
+  bookName: 'How to be a programer.pdf',
 }).then(spider => {
   spider.run();
 });
