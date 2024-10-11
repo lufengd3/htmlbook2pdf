@@ -1,16 +1,31 @@
 const { chromium, devices } = require('playwright');
 
+/** legacy config, for old gitbook */
 const SITE_CONFIG = {
-  bodySelector: '.book-body',
+  // for step 1, get all chapter links
   chapterLinksElmSelector: '.summary li.chapter>a',
+
+  // for step 2, fetch all chapters html content
+  // bodySelector is optional, just for beautify
+  bodySelector: '.book-body',
+  // bookContentSelector is important, it's the container of each chapter content
   bookContentSelector: '#book-search-results',
-  chapterAppendSelector: '.book-body .page-inner',
+
+  // for step 3, beautify page, remove header and sidebar menu etc.
   headerSelector: '.book-header',
   navNextSelector: '.navigation-next',
   sideBarSelector: '.book-summary',
-  menuContainerSelector: '.book-body .page-inner',
-  menuNextElmSelector: '.book-body #book-search-results',
 }
+
+/**
+ * url: 'https://docs.facefusion.io/',
+ * bookName: 'FaceFusion.pdf',
+ */
+// const SITE_CONFIG = {
+//   chapterLinksElmSelector: 'body > div > div > aside > div > ul a',
+//   bookContentSelector: 'main',
+//   headerSelector: 'header',
+// }
 
 class GitBookPDFSpider {
   constructor({browser, page, pageConfig, url, bookName}) {
@@ -35,9 +50,11 @@ class GitBookPDFSpider {
     await this._openMainPage();
     const chaptersMetaInfo = await this._getChaptersMetaInfo();
     console.log('chaptersMetaInfo', chaptersMetaInfo);
+
     const chaptersHTMLContent = await this._fetchAllChaptersHTMLContent(chaptersMetaInfo);
+    const pdfMenuHTML = await this._generatePDFMenuHTML(chaptersMetaInfo);
     await this._beautifyMainPage(chaptersMetaInfo);
-    await this._generateFullHTMLPage(chaptersHTMLContent);
+    await this._generateFullHTMLPage(chaptersHTMLContent, pdfMenuHTML);
     await this._mainPage.pdf({ path: this._bookName, format: 'A4' });
     await this._browser.close();
   }
@@ -48,24 +65,8 @@ class GitBookPDFSpider {
     await this._mainPage.waitForLoadState('domcontentloaded');
   }
 
-  // hide left menu; add pdf chapter link
-  _beautifyMainPage = async (chaptersMetaInfo = []) => {
-    console.log('beautify MainPage')
-    const res = await this._mainPage.evaluate(({chaptersMetaInfo = [], SITE_CONFIG}) => {
-      // for gitbook
-      const bodyElm = document.querySelector(SITE_CONFIG.bodySelector);
-      if (bodyElm) {
-        bodyElm.style.position = 'static';
-      }
-      // for rustbook
-      document.documentElement.style.setProperty('--sidebar-width', '0');
-      try {
-        document.querySelector(SITE_CONFIG.sideBarSelector).remove();
-        document.querySelector(SITE_CONFIG.headerSelector).remove();
-        document.querySelector(SITE_CONFIG.navNextSelector).remove();
-      } catch (e) {
-        console.error('remove elm error', e);
-      }
+  _generatePDFMenuHTML = async (chaptersMetaInfo = []) => {
+    return this._mainPage.evaluate(({chaptersMetaInfo = [], SITE_CONFIG}) => {
       const pdfMenu = document.createElement('div');
       pdfMenu.style.fontSize = '16px';
       pdfMenu.style.padding = '2px 48px';
@@ -81,11 +82,30 @@ class GitBookPDFSpider {
         pdfMenu.appendChild(chapterLinkContainer);
       });
 
-      const bookContainer = document.querySelector(SITE_CONFIG.menuContainerSelector);
-      const bookStartElm = document.querySelector(SITE_CONFIG.menuNextElmSelector);
-      bookContainer.insertBefore(pdfMenu, bookStartElm);
-
       return pdfMenu.innerHTML;
+    }, {chaptersMetaInfo, SITE_CONFIG});
+  }
+
+  // hide left menu; add pdf chapter link
+  _beautifyMainPage = async (chaptersMetaInfo = []) => {
+    console.log('beautify MainPage...')
+    await this._mainPage.evaluate(({chaptersMetaInfo = [], SITE_CONFIG}) => {
+      // for gitbook
+      const bodyElm = document.querySelector(SITE_CONFIG.bodySelector);
+      if (bodyElm) {
+        bodyElm.style.position = 'static';
+      }
+      // for rustbook
+      document.documentElement.style.setProperty('--sidebar-width', '0');
+
+      const sideBarElm = document.querySelector(SITE_CONFIG.sideBarSelector);
+      sideBarElm && sideBarElm.remove();
+
+      const headerElm = document.querySelector(SITE_CONFIG.headerSelector);
+      headerElm && headerElm.remove();
+
+      const navNextElm = document.querySelector(SITE_CONFIG.navNextSelector);
+      navNextElm && navNextElm.remove();
     }, {chaptersMetaInfo, SITE_CONFIG});
   }
 
@@ -96,6 +116,9 @@ class GitBookPDFSpider {
     return this._mainPage.evaluate((SITE_CONFIG) => {
       const res = [];
       const linksElm = document.querySelectorAll(SITE_CONFIG.chapterLinksElmSelector);
+      if (!linksElm) {
+        throw new Error('Can not find chapter links, try to modify SITE_CONFIG.chapterLinksElmSelector');
+      }
       linksElm.forEach((link, index) => {
         link.href && res.push({
           url: link.href,
@@ -141,19 +164,22 @@ class GitBookPDFSpider {
     return bookContentHTML;
   }
 
-  _generateFullHTMLPage = async (chaptersHTMLContent = []) => {
-    if (chaptersHTMLContent.length) {
-      await this._mainPage.evaluate(({chaptersHTMLContent, SITE_CONFIG}) => {
-        const bodyElm = document.querySelector(SITE_CONFIG.chapterAppendSelector);
-        chaptersHTMLContent.forEach((htmlStr) => {
-          const container = document.createElement('div');
-          container.innerHTML = htmlStr;
-          container.style.marginTop = '800px';
-          container.style.paddingTop = '40px';
-          bodyElm.appendChild(container);
-        });
-      }, {chaptersHTMLContent, SITE_CONFIG});
-    }
+  _generateFullHTMLPage = async (chaptersHTMLContent = [], pdfMenuHTML = '') => {
+    if (!chaptersHTMLContent.length) return;
+
+    await this._mainPage.evaluate(({chaptersHTMLContent, pdfMenuHTML, SITE_CONFIG}) => {
+      const bodyElm = document.querySelector(SITE_CONFIG.bookContentSelector);
+      bodyElm.innerHTML = '';
+      bodyElm.appendChild(document.createElement('div')).innerHTML = pdfMenuHTML;
+      
+      chaptersHTMLContent.forEach((htmlStr) => {
+        const container = document.createElement('div');
+        container.innerHTML = htmlStr;
+        container.style.marginTop = '800px';
+        container.style.paddingTop = '40px';
+        bodyElm.appendChild(container);
+      });
+    }, {chaptersHTMLContent, pdfMenuHTML, SITE_CONFIG});
   }
 
 }

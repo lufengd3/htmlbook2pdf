@@ -18,3 +18,11 @@ node ./gitbook.js
 1. Copy gibook.js content
 2. open playwright playground: https://try.playwright.tech/?e=generate-pdf
 3. replace GitBookPDFSpider.create config
+
+
+## spider.run internal process
+1. get all chapter links
+2. fetch all chapters html content
+3. beautify page, remove header and sidebar menu etc.
+
+*try to modify SITE_CONFIG to adapt to different gitbook site structure.*
