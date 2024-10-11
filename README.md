@@ -25,4 +25,4 @@ node ./gitbook.js
 2. fetch all chapters html content
 3. beautify page, remove header and sidebar menu etc.
 
-*try to modify SITE_CONFIG to adapt to different gitbook site structure.*
+*try to modify [SITE_CONFIG](https://github.com/lufengd3/htmlbook2pdf/blob/main/gitbook.js#L4) to adapt to different gitbook site structure.*
